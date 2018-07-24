@@ -2,6 +2,8 @@ ENV["R_HOME"]=""
 ENV["PATH"]="C:/Program Files/R/R-3.5.1/bin/x64/"
 
 using HTTP, DataFrames, RCall, DataFramesMeta, uCSV, FileIO
+using Distributions, DataFramesMeta, Lazy, DataFrames
+using Optim
 
 # ENV["R_HOME"]=""
 # ENV["PATH"]="C:/Program Files/R/R-3.5.0/bin"
