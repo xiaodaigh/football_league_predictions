@@ -1,3 +1,8 @@
 
 data/
 .Rproj.user
+*.rds
+*.fst
+*.zip
+*.Rproj
+.Rhistory
