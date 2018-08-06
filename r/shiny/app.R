@@ -17,7 +17,7 @@ ui <- fluidPage(
     sidebarLayout(
         sidebarPanel(
             # shiny::selectizeinput
-            shiny::selectizeInput("select_league","League",choices = c("epl","brazil1","csl","finland1","ireland1","mls","norway1","sweden1","sweden2"),selected="epl")
+            shiny::selectizeInput("select_league","League",choices = c("epl","brazil1","csl","finland1","ireland1","mls","norway1","sweden1","sweden2","colombia1"),selected="epl")
         ),
         
         # Show a plot of the generated distribution
@@ -25,7 +25,7 @@ ui <- fluidPage(
             tabsetPanel(
                 tabPanel("Winner",DT::DTOutput("dt_winner")),
                 tabPanel("Winner wo City",DT::DTOutput("dt_winner_wo_city")),
-                tabPanel("Winner Big 6",DT::DTOutput("dt_winner_wo_big6")),
+                tabPanel("Winner wo Big 6",DT::DTOutput("dt_winner_wo_big6")),
                 tabPanel("Top 4",DT::DTOutput("dt_top4")),
                 tabPanel("Top 6",DT::DTOutput("dt_top6")),
                 tabPanel("Relegated",DT::DTOutput("dt_relegated")),

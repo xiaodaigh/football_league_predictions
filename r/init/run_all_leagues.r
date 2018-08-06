@@ -13,16 +13,22 @@ urls = list(
   #epl1516_url = "https://footystats.org/england/premier-league/2015-2016/matches",
   finland1_url = "https://footystats.org/finland/veikkausliiga/matches",
   mls_url = "https://footystats.org/usa/mls/matches",
-  superettan_url = "https://footystats.org/sweden/superettan/matches"
+  superettan_url = "https://footystats.org/sweden/superettan/matches",
+  japan1_url = "https://footystats.org/japan/j1-league/matches",
+  colombia1_url = "https://footystats.org/colombia/categoria-primera-a/matches"
 )
 
 outpath = "data/"
 
-leagues = c("csl","ireland1","sweden1","brazil1","norway1","finland1","mls","sweden2")
+leagues = c("csl","ireland1","sweden1","brazil1","norway1","finland1","mls","sweden2","japan1","colombia1")
 
-get_pred_haad(urls$csl_url,file.path(outpath,"csl" %>% paste0(".rds")))  
-get_pred_haad(urls$csl_url,file.path("r/shiny","csl" %>% paste0(".rds")))  
+res = get_pred_haad(urls$csl_url,file.path(outpath,"csl" %>% paste0(".rds")), nsim=10000)
+res[[3]]
+
+#get_pred_haad(urls$csl_url,file.path("r/shiny","csl" %>% paste0(".rds")))  
 
 mapply(get_pred_haad, urls, file.path(outpath, leagues %>% paste0(".rds")))
 
+
+get_pred_haad(urls$colombia1_url, file.path(outpath, "colombia1"))
   

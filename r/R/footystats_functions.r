@@ -201,7 +201,7 @@ get_pred_haad = function(url, saveas, nsim=1000) {
   hd = ha_ad_aa_hd$hd
   
   # simulate the rest of the season -----------------------------------------
-  res1000a = simulate_season_haad(gr3, ha, ad, aa, hd)
+  res1000a = simulate_season_haad(gr3, ha, ad, aa, hd, nsim = nsim)
   
   resA = res1000a[
     ,.(min(pts), mean(pts) %>% round(0), max(pts)
