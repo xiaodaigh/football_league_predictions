@@ -68,6 +68,11 @@ simulate_season_haad <- function(gr3, ha, ad, aa, hd, nsim=1000) {
     merge(aa,by="AwayTeam") %>% 
     merge(ad,by="AwayTeam")
   
+  #browser()
+  warning("ZJ: manually updated scores")
+  gr3b[HomeTeam=="Tianjin Teda" & AwayTeam=="Guangzhou Evergrande",`:=`(hg=0,ag=1)]
+  gr3b[HomeTeam=="Beijing Guoan" & AwayTeam=="Hebei CFFC",`:=`(hg=1,ag=1)]
+  
   system.time(res1000 <- replicate(nsim, {
     gr3b1 = copy(gr3b[HomeTeam!=AwayTeam])
     gr3b1[is.na(hg),hg:=sapply(ha-ad,function(haad) rpois(1,haad))]
@@ -101,7 +106,9 @@ simulate_season_haad <- function(gr3, ha, ad, aa, hd, nsim=1000) {
 }
 
 #' Download from footystats.org and format the table
-get_footystats <- function(url) {
+get_footystats <- function(url, locked=F) {
+  # url = "https://footystats.org/denmark/superliga/matches"
+  # locked=T
   tdist <- read_html(url)
   gr_old = tdist %>%
     html_nodes("table.matches-table.inactive-matches")
@@ -114,25 +121,31 @@ get_footystats <- function(url) {
     html_text
   
   gr_new = lapply(gr_old, function(gr_old) {
+    #browser()
     gr = gr_old %>%
-      html_table(header = TRUE);gr
+      html_table(header = TRUE,fill=T);gr
     
     if(F) {
       ncol(gr)
       # column 7 and beyond just ignore
       gr[,7]
     }
-    
-    gr = gr[,1:6]
-    names(gr) <- c("datetime","HomeTeam","scoreline_odds","AwayTeam", "tot_g","ht_scoreline")
-    setDT(gr)
-    gr[substr(HomeTeam, nchar(HomeTeam)-3, nchar(HomeTeam)) == "Odds",HomeTeam:=sapply(HomeTeam, function(HomeTeam) {
-      nc = nchar(HomeTeam)
-      substr(HomeTeam,1,nc-4)
-    })]
-    
-    gr[,scoreline:=str_extract(scoreline_odds, regex("[:digit:] - [:digit:]"))]
-    gr
+    if(!locked) {
+      gr = gr[,1:6]
+      names(gr) <- c("datetime","HomeTeam","scoreline_odds","AwayTeam", "tot_g","ht_scoreline")
+      setDT(gr)
+      gr[substr(HomeTeam, nchar(HomeTeam)-3, nchar(HomeTeam)) == "Odds",HomeTeam:=sapply(HomeTeam, function(HomeTeam) {
+        nc = nchar(HomeTeam)
+        substr(HomeTeam,1,nc-4)
+      })]
+      
+      gr[,scoreline:=str_extract(scoreline_odds, regex("[:digit:] - [:digit:]"))]
+      gr
+    } else {
+      names(gr) <- c("datetime","NA","HomeTeam","scoreline","AwayTeam")
+      setDT(gr)
+      gr[,.(datetime,HomeTeam,scoreline,AwayTeam)]
+    }
   }) %>% rbindlist(use.names=T,fill=T)
   
   gr = gr_new
@@ -183,16 +196,17 @@ get_footystats <- function(url) {
 }
 
 #' Download the data from footystats, estimate the haad and simultae the rest of the season
-get_pred_haad = function(url, saveas, nsim=1000) {
+get_pred_haad = function(url, saveas, nsim=1000,...) {
   print(url)
-  gr3 = get_footystats(url)
+
+  gr3 = get_footystats(url,...)
   
   gr4 = gr3[!is.na(hg),.(HomeTeam,AwayTeam,hg,ag)]
-  # look at it --------------------------------------------------------------
+  
   gr4[,mean(hg),HomeTeam][order(V1, decreasing = T)]
   gr4[,mean(ag),AwayTeam][order(V1, decreasing = T)]
   
-  # home attacka nd away defense --------------------------------------------
+  # home attack  d away defense --------------------------------------------
   ha_ad_aa_hd = est_ha_ad_aa_hd(gr4)
   
   ha = ha_ad_aa_hd$ha
