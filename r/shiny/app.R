@@ -17,7 +17,7 @@ ui <- fluidPage(
     sidebarLayout(
         sidebarPanel(
             # shiny::selectizeinput
-            shiny::selectizeInput("select_league","League",choices = c("epl","brazil1","csl","finland1","ireland1","mls","norway1","sweden1","sweden2","colombia1"),selected="epl")
+            shiny::selectizeInput("select_league","League",choices = c("epl","brazil1","csl","finland1","ireland1","mls","norway1","sweden1","sweden2","colombia1","denmark2","switzerland1","ireland2","czech1"),selected="epl")
         ),
         
         # Show a plot of the generated distribution

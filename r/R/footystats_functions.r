@@ -61,20 +61,29 @@ est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)]) {
 
 #' Simulate a season using the haad method
 #' @export
-simulate_season_haad <- function(gr3, ha, ad, aa, hd, nsim=1000) {
+simulate_season_haad <- function(gr3, ha, ad, aa, hd, match_predictions = NULL, nsim=1000) {
+  #browser()
+  if(!is.null(match_predictions)) {
+    gr3 = merge(gr3, match_predictions, by=c("HomeTeam","AwayTeam"), all.x=T) %>% as.data.table
+    gr3[,prob_1:=1/odds_1]
+    gr3[,prob_2:=1/odds_2]
+    gr3[,prob_x:=1/odds_x]
+    gr3[,prob_tot:=(prob_1 + prob_2 + prob_x)]
+    gr3[,prob_1 := prob_1/(prob_tot)]
+    gr3[,prob_2 := prob_2/(prob_tot)]
+    gr3[,prob_x := prob_x/(prob_tot)]
+  } 
+
   gr3b = gr3 %>%
     merge(ha,by="HomeTeam") %>% 
     merge(hd,by="HomeTeam") %>% 
     merge(aa,by="AwayTeam") %>% 
-    merge(ad,by="AwayTeam")
-  
-  #browser()
-  warning("ZJ: manually updated scores")
-  gr3b[HomeTeam=="Tianjin Teda" & AwayTeam=="Guangzhou Evergrande",`:=`(hg=0,ag=1)]
-  gr3b[HomeTeam=="Beijing Guoan" & AwayTeam=="Hebei CFFC",`:=`(hg=1,ag=1)]
+    merge(ad,by="AwayTeam") %>% 
+    filter(HomeTeam!=AwayTeam) %>% 
+    as.data.table
   
   system.time(res1000 <- replicate(nsim, {
-    gr3b1 = copy(gr3b[HomeTeam!=AwayTeam])
+    gr3b1 = copy(gr3b)
     gr3b1[is.na(hg),hg:=sapply(ha-ad,function(haad) rpois(1,haad))]
     gr3b1[is.na(hg), hg := 0]
     
@@ -88,6 +97,19 @@ simulate_season_haad <- function(gr3, ha, ad, aa, hd, nsim=1000) {
     gr3b1[hg == ag,apts:=1]
     gr3b1[hg < ag,hpts:=0]
     gr3b1[hg < ag,apts:=3]
+    
+    
+    # override with another prediction ----------------------------------------
+    if(!is.null(match_predictions)) {
+      gr3b1[, rn := runif(.N)]
+      
+      gr3b1[!is.na(prob_1) & rn <= prob_1 , hpts:=3]
+      gr3b1[!is.na(prob_1) & rn <= prob_1, apts:=0]
+      gr3b1[!is.na(prob_1) & rn > prob_1, hpts:=1]
+      gr3b1[!is.na(prob_1) & rn > prob_1, apts:=1]
+      gr3b1[!is.na(prob_1) & rn > prob_1 + prob_x, hpts:=0]
+      gr3b1[!is.na(prob_1) & rn > prob_1 + prob_x, apts:=3]
+    }
     
     gr3b1a = rbindlist(
       list(
@@ -196,12 +218,20 @@ get_footystats <- function(url, locked=F) {
 }
 
 #' Download the data from footystats, estimate the haad and simultae the rest of the season
-get_pred_haad = function(url, saveas, nsim=1000,...) {
+#' @param match_predictions a data.tble containing the odds implied predictions
+get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, ...) {
   print(url)
 
   gr3 = get_footystats(url,...)
   
   gr4 = gr3[!is.na(hg),.(HomeTeam,AwayTeam,hg,ag)]
+  
+  if(F) {
+    warning("manual matches")
+    #browser()
+    gr4[HomeTeam=="Beijing Guoan" & AwayTeam == "Dalian Yifang",hg:=5]
+    gr4[HomeTeam=="Beijing Guoan" & AwayTeam == "Dalian Yifang",ag:=2]
+  }
   
   gr4[,mean(hg),HomeTeam][order(V1, decreasing = T)]
   gr4[,mean(ag),AwayTeam][order(V1, decreasing = T)]
@@ -215,7 +245,7 @@ get_pred_haad = function(url, saveas, nsim=1000,...) {
   hd = ha_ad_aa_hd$hd
   
   # simulate the rest of the season -----------------------------------------
-  res1000a = simulate_season_haad(gr3, ha, ad, aa, hd, nsim = nsim)
+  res1000a = simulate_season_haad(gr3, ha, ad, aa, hd, nsim = nsim, match_predictions = match_predictions)
   
   resA = res1000a[
     ,.(min(pts), mean(pts) %>% round(0), max(pts)
