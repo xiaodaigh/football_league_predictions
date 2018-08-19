@@ -1,6 +1,7 @@
 #' Estimate home attack/away defense/away attack/home defense given a data.table
 #' @export
 est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)]) {
+  #browser()
   ha = gr4[order(HomeTeam),.(ha = mean(hg)),HomeTeam]
   ad = gr4[order(AwayTeam),.(ad = 0),AwayTeam]
   
@@ -221,16 +222,20 @@ get_footystats <- function(url, locked=F) {
 #' @param match_predictions a data.tble containing the odds implied predictions
 get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, ...) {
   print(url)
+  #browser()
 
   gr3 = get_footystats(url,...)
   
   gr4 = gr3[!is.na(hg),.(HomeTeam,AwayTeam,hg,ag)]
   
-  if(F) {
+  if(T) {
     warning("manual matches")
     #browser()
-    gr4[HomeTeam=="Beijing Guoan" & AwayTeam == "Dalian Yifang",hg:=5]
-    gr4[HomeTeam=="Beijing Guoan" & AwayTeam == "Dalian Yifang",ag:=2]
+    gr4[HomeTeam=="Guangzhou Evergrande" & AwayTeam == "Tianjin Quanjian",hg:=5]
+    gr4[HomeTeam=="Guangzhou Evergrande" & AwayTeam == "Tianjin Quanjian",ag:=0]
+    
+    gr4[HomeTeam=="Hebei CFFC" & AwayTeam== "Shanghai Shenhua", hg:=4]
+    gr4[HomeTeam=="Hebei CFFC" & AwayTeam== "Shanghai Shenhua", ag:=1]
   }
   
   gr4[,mean(hg),HomeTeam][order(V1, decreasing = T)]
@@ -269,7 +274,7 @@ get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, ...) 
 #' @export
 create_negloglik_fn = function(goals, attack_order, defense_order, nteams) {
   function(haad){
-    -sum(dpois(goals, pmax(0.00,haad[1:nteams][attack_order] - haad[(nteams+1):(nteams*2)][defense_order]), log = T))
+    -sum(dpois(goals, pmax(0.001,haad[1:nteams][attack_order] - haad[(nteams+1):(nteams*2)][defense_order]), log = T))
   }
 }
 
@@ -293,7 +298,9 @@ haad_est = function(goals, team1, team2) {
   
   haad = c(ha_dt[,a], ad_dt[,d])
   
-  system.time(heheres <- optim(haad, negloglik_fn, control = list(maxit=1e5)))
+  l = length(haad)
+  #system.time(heheres <- optim(haad, negloglik_fn, control = list(maxit=1e5), lower=c(rep(0,l/2),rep(-10,l/2)),method="L-BFGS-B"))
+  system.time(heheres <- optim(haad, negloglik_fn, control = list(maxit=1e5), lower=c(rep(0,l/2),rep(-10,l/2))))
   heheres
 }
 

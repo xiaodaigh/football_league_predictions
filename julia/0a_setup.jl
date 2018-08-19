@@ -8,8 +8,8 @@ using Optim
 # ENV["R_HOME"]=""
 # ENV["PATH"]="C:/Program Files/R/R-3.5.0/bin"
 # Pkg.build("RCall")
-#readcsvurl(urls[1])
-#@time a = vcat.(readcsvurl.(urls))
+# readcsvurl(urls[1])
+# @time a = vcat.(readcsvurl.(urls))
 
 function readcsvurl(url)
     print(url)

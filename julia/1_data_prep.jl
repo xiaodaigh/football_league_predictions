@@ -11,8 +11,6 @@ sort!(fixtures_latest, cols=[:HomeTeam,:AwayTeam])
 # create the minimal datasets for merging
 fixtures_latest1 = fixtures_latest[[:HomeTeam,:AwayTeam,:FTHG]];
 
-
-
 # estimate the attack strength
 ha_est = @> begin
     fixtures_latest
