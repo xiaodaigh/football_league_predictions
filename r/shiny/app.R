@@ -3,42 +3,49 @@ library(fst)
 library(data.table)
 library(magrittr)
 library(DT)
-elo_sim = fst::read_fst("elo_sim.fst",as.data.table = T)
-elo_sim
-ntries = 10000
+library(rvest)
+library(stringr)
+library(tidyr)
+source("footystats_functions.r")
+
+#elo_sim = fst::read_fst("elo_sim.fst",as.data.table = T)
+all_leagues = fread("leagues.csv")
+
+ntries = 1000
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
     
     # Application title
-    titlePanel("EPL prediction"),
+    titlePanel("Football League Winner Prediction"),
     
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
             # shiny::selectizeinput
-            shiny::selectizeInput("select_league","League",choices = c("epl","brazil1","csl","finland1","ireland1","mls","norway1","sweden1","sweden2","colombia1","denmark2","switzerland1","ireland2","czech1"),selected="epl")
+            shiny::selectizeInput("select_league","League",choices = all_leagues$league,selected="epl"),
+            shiny::actionButton("update_mdl_btn","Update")
         ),
         
         # Show a plot of the generated distribution
         mainPanel(
             tabsetPanel(
-                tabPanel("Winner",DT::DTOutput("dt_winner")),
-                tabPanel("Winner wo City",DT::DTOutput("dt_winner_wo_city")),
-                tabPanel("Winner wo Big 6",DT::DTOutput("dt_winner_wo_big6")),
-                tabPanel("Top 4",DT::DTOutput("dt_top4")),
-                tabPanel("Top 6",DT::DTOutput("dt_top6")),
-                tabPanel("Relegated",DT::DTOutput("dt_relegated")),
-                tabPanel("Not Relegated",DT::DTOutput("dt_not_relegated")),
-                tabPanel("Top 10",DT::DTOutput("dt_top10")),
-                tabPanel("Bottom 10",DT::DTOutput("dt_bottom10")),
-                tabPanel("Bottom",DT::DTOutput("dt_bottom")),
-                tabPanel("Not in Top 4",DT::DTOutput("dt_not_in_top4")),
-                tabPanel("Top Newcomer",DT::DTOutput("dt_top_newcomer")),
-                tabPanel("# Promoted to be relegated",DT::DTOutput("dt_n_promoted_relegated")),
-                tabPanel("Points",DT::DTOutput("dt_points")),
-                tabPanel("Arsenal",DT::DTOutput("dt_arsenal")),
-                tabPanel("Tottenham",DT::DTOutput("dt_tottenham"))
+                tabPanel("Winner",DT::DTOutput("dt_winner"))#,
+                # tabPanel("Winner wo City",DT::DTOutput("dt_winner_wo_city")),
+                # tabPanel("Winner wo Big 6",DT::DTOutput("dt_winner_wo_big6")),
+                # tabPanel("Top 4",DT::DTOutput("dt_top4")),
+                # tabPanel("Top 6",DT::DTOutput("dt_top6")),
+                # tabPanel("Relegated",DT::DTOutput("dt_relegated")),
+                # tabPanel("Not Relegated",DT::DTOutput("dt_not_relegated")),
+                # tabPanel("Top 10",DT::DTOutput("dt_top10")),
+                # tabPanel("Bottom 10",DT::DTOutput("dt_bottom10")),
+                # tabPanel("Bottom",DT::DTOutput("dt_bottom")),
+                # tabPanel("Not in Top 4",DT::DTOutput("dt_not_in_top4")),
+                # tabPanel("Top Newcomer",DT::DTOutput("dt_top_newcomer")),
+                # tabPanel("# Promoted to be relegated",DT::DTOutput("dt_n_promoted_relegated")),
+                # tabPanel("Points",DT::DTOutput("dt_points")),
+                # tabPanel("Arsenal",DT::DTOutput("dt_arsenal")),
+                # tabPanel("Tottenham",DT::DTOutput("dt_tottenham"))
             )
         )
     )
@@ -46,6 +53,22 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    observe({
+        if(input$update_mdl_btn==0) return()
+        isolate({
+            league = all_leagues[league == input$select_league]
+            options(warn=-1)
+            #browser()
+            res = get_pred_haad(league$url, file.path("data",league$league %>% paste0(".rds")),locked=league$locked)
+            options(warn=0)
+        })
+    })
+    
+    simulated_result <- reactive({
+        input$update_mdl_btn
+        readRDS(file.path("data", input$select_league %>% paste0(".rds")))
+    })
     
     output$dt_points <- renderDT({
         neds_pts = data.table(
@@ -81,12 +104,12 @@ server <- function(input, output) {
     })
     
     output$dt_winner <- renderDT({
-        if(input$select_league == "epl") {
-            return(elo_sim[rank==1,.(`Predicted Odds`=round(ntries/.N,2)),team][`Predicted Odds`>=1.01][order(`Predicted Odds`)])
-        } else {
-            resabc = readRDS(input$select_league %>% paste0(".rds"))
+        # if(input$select_league == "epl") {
+        #     return(elo_sim[rank==1,.(`Predicted Odds`=round(ntries/.N,2)),team][`Predicted Odds`>=1.01][order(`Predicted Odds`)])
+        # } else {
+            resabc = simulated_result()
             return(resabc[[3]])
-        }
+        #}
     })
     
     output$dt_top_newcomer <- renderDT({

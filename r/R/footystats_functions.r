@@ -1,9 +1,20 @@
 #' Estimate home attack/away defense/away attack/home defense given a data.table
 #' @export
-est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)]) {
+est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)], init = NULL) {
   #browser()
-  ha = gr4[order(HomeTeam),.(ha = mean(hg)),HomeTeam]
-  ad = gr4[order(AwayTeam),.(ad = 0),AwayTeam]
+  if(is.null(init)) {
+    ha = gr4[order(HomeTeam),.(ha = mean(hg)),HomeTeam]
+    ad = gr4[order(AwayTeam),.(ad = 0),AwayTeam]
+  } else {
+    ha = gr4[order(HomeTeam),.(hax = mean(hg)),HomeTeam]
+    ad = gr4[order(AwayTeam),.(adx = 0),AwayTeam]
+
+    ha = merge(ha, init$ha, by = "HomeTeam", all.x=T)
+    ha = ha[,.(HomeTeam, ha = ifelse(!is.na(ha),ha,hax))]
+    
+    ad = merge(ad, init$ad, by = "AwayTeam", all.x=T)
+    ad = ad[,.(AwayTeam, ad = ifelse(!is.na(ad),ad,adx))]
+  }
   
   # system.time(res_ha_ad <- optim(c(ha$ha, rep(0,nteams)), function(v) {
   #   ha[,ha:=v[1:nteams]]
@@ -25,8 +36,19 @@ est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)]) {
   ad[order(ad,decreasing = T)]
   
   # away attack and home defense --------------------------------------------
-  aa = gr4[order(AwayTeam),.(aa = mean(ag)),AwayTeam]
-  hd = gr4[order(HomeTeam),.(hd = 0),HomeTeam]
+  if(is.null(init)) {
+    aa = gr4[order(AwayTeam),.(aa = mean(ag)),AwayTeam]
+    hd = gr4[order(HomeTeam),.(hd = 0),HomeTeam]
+  } else {
+    aa = gr4[order(AwayTeam),.(aax = mean(ag)),AwayTeam]
+    hd = gr4[order(HomeTeam),.(hdx = 0),HomeTeam]
+    
+    aa = merge(aa, init$aa, by = "AwayTeam", all.x=T)
+    aa = aa[,.(AwayTeam, aa = ifelse(!is.na(aa),aa,aax))]
+    
+    hd = merge(hd, init$hd, by = "HomeTeam", all.x=T)
+    hd = hd[,.(HomeTeam, hd = ifelse(!is.na(hd),hd,hdx))]
+  }
   
   # v = c(aa$aa, rep(0,nteams))
   # system.time(res_aa_hd <- optim(c(aa$aa, rep(0,nteams)), function(v) {
@@ -60,6 +82,28 @@ est_ha_ad_aa_hd <- function(gr4, nteams = gr4[,dplyr::n_distinct(HomeTeam)]) {
   list(ha=ha,ad=ad,aa=aa,hd=hd)
 }
 
+score_pts <- function(gr3b1) {
+  gr3b1[hg > ag,hpts:=3]
+  gr3b1[hg > ag,apts:=0]
+  gr3b1[hg == ag,hpts:=1]
+  gr3b1[hg == ag,apts:=1]
+  gr3b1[hg < ag,hpts:=0]
+  gr3b1[hg < ag,apts:=3]
+  
+  
+  # override with another prediction ----------------------------------------
+  gr3b1a = rbindlist(
+    list(
+      gr3b1[,sum(hpts),.(team=HomeTeam)]
+      ,gr3b1[,sum(apts),.(team=AwayTeam)]
+    ))
+  
+  gr3b1a1 = gr3b1a[,.(pts = sum(V1)),team]
+  gr3b1a1[order(pts,decreasing = T), rank:=1:.N]
+  setkey(gr3b1a1,rank)
+  gr3b1a1
+}
+
 #' Simulate a season using the haad method
 #' @export
 simulate_season_haad <- function(gr3, ha, ad, aa, hd, match_predictions = NULL, nsim=1000) {
@@ -80,7 +124,7 @@ simulate_season_haad <- function(gr3, ha, ad, aa, hd, match_predictions = NULL, 
     merge(hd,by="HomeTeam") %>% 
     merge(aa,by="AwayTeam") %>% 
     merge(ad,by="AwayTeam") %>% 
-    filter(HomeTeam!=AwayTeam) %>% 
+    dplyr::filter(HomeTeam!=AwayTeam) %>% 
     as.data.table
   
   system.time(res1000 <- replicate(nsim, {
@@ -102,6 +146,7 @@ simulate_season_haad <- function(gr3, ha, ad, aa, hd, match_predictions = NULL, 
     
     # override with another prediction ----------------------------------------
     if(!is.null(match_predictions)) {
+      #browser()
       gr3b1[, rn := runif(.N)]
       
       gr3b1[!is.na(prob_1) & rn <= prob_1 , hpts:=3]
@@ -189,6 +234,7 @@ get_footystats <- function(url, locked=F) {
   gr3tmp = cbind(gr, gr1)
   
   if(length(xx) != 0) {
+    #bro
     gr_current = 
       data.table(
         HomeTeam = xx[c(T,F)]
@@ -220,30 +266,29 @@ get_footystats <- function(url, locked=F) {
 
 #' Download the data from footystats, estimate the haad and simultae the rest of the season
 #' @param match_predictions a data.tble containing the odds implied predictions
-get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, ...) {
+get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, init_haad = NULL, ...) {
   print(url)
   #browser()
 
   gr3 = get_footystats(url,...)
   
-  gr4 = gr3[!is.na(hg),.(HomeTeam,AwayTeam,hg,ag)]
-  
-  if(T) {
+  if(F) {
     warning("manual matches")
-    #browser()
-    gr4[HomeTeam=="Guangzhou Evergrande" & AwayTeam == "Tianjin Quanjian",hg:=5]
-    gr4[HomeTeam=="Guangzhou Evergrande" & AwayTeam == "Tianjin Quanjian",ag:=0]
+    # gr3[HomeTeam == "Beijing Guoan" & AwayTeam == "Shanghai SIPG", hg:=0]
+    # gr3[HomeTeam == "Beijing Guoan" & AwayTeam == "Shanghai SIPG", ag:=1]
     
-    gr4[HomeTeam=="Hebei CFFC" & AwayTeam== "Shanghai Shenhua", hg:=4]
-    gr4[HomeTeam=="Hebei CFFC" & AwayTeam== "Shanghai Shenhua", ag:=1]
+    #browser()
   }
-  
+
+  gr4 = gr3[!is.na(hg),.(HomeTeam,AwayTeam,hg,ag)]
+  View(score_pts(gr4))
+  #browser()
   gr4[,mean(hg),HomeTeam][order(V1, decreasing = T)]
   gr4[,mean(ag),AwayTeam][order(V1, decreasing = T)]
   
   # home attack  d away defense --------------------------------------------
-  ha_ad_aa_hd = est_ha_ad_aa_hd(gr4)
-  
+  ha_ad_aa_hd = est_ha_ad_aa_hd(gr4, init = init_haad)
+  #browser()
   ha = ha_ad_aa_hd$ha
   ad = ha_ad_aa_hd$ad
   aa = ha_ad_aa_hd$aa
@@ -258,7 +303,7 @@ get_pred_haad = function(url, saveas, nsim=1000, match_predictions = NULL, ...) 
   
   resB = res1000a[rank==1,.((nsim/.N) %>% round(2),(.N/nsim) %>% round(2)),team][order(V1)]
   
-  resABC = list(res1000a, resA, resB, gr3, ha=ha ,ad=ad,aa=aa,ad=ad)
+  resABC = list(res1000a, resA, resB, gr3, ha=ha ,hd=hd, aa=aa, ad=ad)
   saveRDS(resABC, file=saveas)
   print(resABC)
   resABC

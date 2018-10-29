@@ -1,5 +1,14 @@
 "","league","url","locked"
 "1","csl","https://footystats.org/china/chinese-super-league/matches",FALSE
+"17","epl","https://footystats.org/england/premier-league/matches",FALSE
+"1","spain1","https://footystats.org/spain/la-liga/matches",FALSE
+"1","seriea","https://footystats.org/italy/serie-a/matches",FALSE
+"1","bundesliga","https://footystats.org/germany/bundesliga/matches",FALSE
+"1","ligue1","https://footystats.org/france/ligue-1/matches",FALSE
+"1","scotland1","https://footystats.org/scotland/premiership/matches",FALSE
+"1","portugal1","https://footystats.org/portugal/liga-nos/matches",FALSE
+"1","russia1","https://footystats.org/russia/premier-league/matches",FALSE
+"1","turkey1","https://footystats.org/turkey/super-lig/matches",FALSE
 "2","ireland1","https://footystats.org/republic-of-ireland/premier-division/matches",FALSE
 "3","sweden1","https://footystats.org/sweden/allsvenskan/matches",FALSE
 "4","brazil1","https://footystats.org/brazil/serie-a/matches",FALSE
@@ -14,3 +23,4 @@
 "13","ireland2","https://footystats.org/republic-of-ireland/first-division/matches",TRUE
 "14","denmark2","https://footystats.org/denmark/1st-division/matches",FALSE
 "15","switzerland1","https://footystats.org/switzerland/super-league/matches",FALSE
+"1","netherlands1","https://footystats.org/netherlands/eredivisie/matches",FALSE
